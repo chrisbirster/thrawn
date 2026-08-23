@@ -1,14 +1,16 @@
 # Roadmap
 
-This roadmap defines the path from the current `zig init` scaffold to Thrawn 1.0.
+This roadmap defines the path from the initial `zig init` scaffold to Thrawn 1.0.
 
-The milestones describe behavior, not mandatory file counts. Start simple, split modules when responsibilities become distinct, and keep the public API small throughout.
+The milestones describe behavior, not mandatory file counts. The implementation grew into modules only as their responsibilities became distinct.
+
+## Implementation status
+
+The Phase 0 through Phase 3 architecture is now implemented on `dev` through feature branches. Before a 1.0 release, the remaining work is release hardening: API review, package metadata/version synchronization, installation documentation, and selecting a project license.
 
 ## Phase 0 — Command engine
 
-Goal: prove the core tree model.
-
-Implement:
+Implemented:
 
 - `Command`
 - nested child commands
@@ -16,86 +18,24 @@ Implement:
 - leaf handlers
 - positional values passed to handlers
 - basic resolution
-- basic generated help
+- generated help
 - unit tests for tree traversal
-
-Initial implementation may live almost entirely in `src/root.zig` with `src/main.zig` serving as a demonstration executable.
-
-Expected commands:
-
-```text
-thrawn-demo
-thrawn-demo fleet
-thrawn-demo fleet status
-thrawn-demo fleet deploy destroyer
-thrawn-demo version
-thrawn-demo v
-```
-
-Exit criteria:
-
-- nested traversal works
-- aliases resolve to the same command
-- remaining tokens reach the selected leaf
-- branches show help when no executable leaf is selected
-- resolution is directly unit testable
-
-Suggested feature branch:
-
-```text
-feature/command-tree-engine
-```
 
 ## Phase 1 — Reliable execution core
 
-Goal: make Thrawn safe and testable enough to use in another project.
-
-Implement:
+Implemented:
 
 - proper stdout writer
 - proper stderr writer
-- explicit framework errors
-- consistent exit-code behavior
-- full command paths in resolution results
-- positional argument declarations and validation
+- explicit framework errors and exit codes
+- full nested command paths in resolution/help/errors
+- named positional declarations and validation
 - useful unknown-command diagnostics
 - exact tests for help and error output
 
-Likely modules introduced here:
-
-```text
-command.zig
-context.zig
-resolve.zig
-run.zig
-arguments.zig
-help.zig
-errors.zig
-```
-
-Suggested feature branches:
-
-```text
-feature/output-writers
-feature/error-model
-feature/argument-validation
-feature/help-output
-```
-
-Exit criteria:
-
-- command output can be redirected cleanly
-- errors go to stderr
-- framework usage failures return a documented nonzero status
-- handlers receive already-validated basic positional input
-- nested usage/help displays the complete path
-- all normal behavior is testable without subprocesses
-
 ## Phase 2 — Complete core CLI framework
 
-Goal: make Thrawn functionally complete for production CLI applications.
-
-Implement:
+Implemented:
 
 - long options
 - short options
@@ -108,41 +48,13 @@ Implement:
 - command-tree validation
 - duplicate/collision detection
 - typo suggestions
-- polished help/usage formatting
-
-Likely modules introduced here:
-
-```text
-options.zig
-validation.zig
-suggestions.zig
-```
-
-Suggested feature branches:
-
-```text
-feature/options
-feature/default-commands
-feature/tree-validation
-feature/suggestions
-feature/help-formatting
-```
-
-Exit criteria:
-
-- applications can express normal command-line interfaces without writing their own parsing layer
-- invalid command declarations fail early
-- option/name collisions cannot produce ambiguous behavior
-- help output fully describes commands, positionals, and options
-- error messages identify the failing command path
+- generated usage/help formatting
 
 At the end of Phase 2, Thrawn is considered a complete core framework and is suitable for substantial real-world use.
 
 ## Phase 3 — Shell completion and 1.0
 
-Goal: make the framework feel complete in interactive shells.
-
-Implement:
+Implemented:
 
 - shared completion engine
 - child-command completion
@@ -153,36 +65,33 @@ Implement:
 - Zsh integration
 - Fish integration
 
-Target modules:
+The same command tree drives runtime resolution and completion, while application-defined completers can provide domain-specific values.
+
+## Target source layout
 
 ```text
-completion/
+src/
 ├── root.zig
-├── engine.zig
-├── bash.zig
-├── zsh.zig
-└── fish.zig
+├── command.zig
+├── context.zig
+├── resolve.zig
+├── run.zig
+├── arguments.zig
+├── options.zig
+├── validation.zig
+├── help.zig
+├── errors.zig
+├── suggestions.zig
+├── path.zig
+└── completion/
+    ├── root.zig
+    ├── engine.zig
+    ├── bash.zig
+    ├── zsh.zig
+    └── fish.zig
 ```
-
-Suggested feature branches:
-
-```text
-feature/completion-engine
-feature/zsh-completion
-feature/bash-completion
-feature/fish-completion
-```
-
-Exit criteria:
-
-- the same command tree drives runtime resolution and completion
-- static candidates require no application duplication
-- applications can provide dynamic candidates for domain-specific values
-- Bash, Zsh, and Fish have documented installation paths
 
 ## Examples
-
-Examples should be added as the corresponding capability becomes stable:
 
 ```text
 examples/
@@ -192,14 +101,11 @@ examples/
 └── completion/
 ```
 
-Each example should be intentionally small and demonstrate one concept clearly.
-
 ## Test suite
-
-As the implementation grows, move behavioral coverage into dedicated files:
 
 ```text
 tests/
+├── root.zig
 ├── resolve_test.zig
 ├── options_test.zig
 ├── help_test.zig
@@ -207,62 +113,16 @@ tests/
 └── completion_test.zig
 ```
 
-Tests may remain colocated with implementation early in development if that makes iteration easier.
+## Release hardening
 
-## Release milestones
+Before `v1.0.0`:
 
-Suggested version progression:
-
-### `v0.1.0`
-
-Command engine is proven:
-
-- tree traversal
-- aliases
-- handlers
-- basic help
-- basic tests
-
-### `v0.2.0`–`v0.4.x`
-
-Reliable execution work:
-
-- output model
-- error model
-- positional argument validation
-- improved help
-
-### `v0.5.0`–`v0.8.x`
-
-Phase 2 core framework:
-
-- options
-- tree validation
-- defaults
-- hidden/deprecated commands
-- typo suggestions
-
-### `v0.9.0`
-
-1.0 release candidate period:
-
-- completion engine
-- shell adapters
-- documentation/examples
-- public API stabilization
-
-### `v1.0.0`
-
-Stable public API with:
-
-- command trees
-- arguments
-- options
-- help
-- errors/exit behavior
-- validation
-- completion for Bash/Zsh/Fish
-- comprehensive tests and examples
+- review the public API names and remove accidental surface area
+- synchronize `build.zig.zon` versioning with release tags
+- document dependency installation and shell completion installation
+- select and add the project license
+- maintain `CHANGELOG.md`
+- run the native Linux/macOS/Windows matrix from the release tag
 
 ## Release rule
 

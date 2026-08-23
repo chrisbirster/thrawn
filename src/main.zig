@@ -10,8 +10,7 @@ const status_command: th.Command = .{
 const deploy_command: th.Command = .{
     .name = "deploy",
     .summary = "Deploy a ship",
-    .usage = "deploy <ship> [--dry-run]",
-    .args = .{ .exact = 1 },
+    .args = .{ .positionals = &.{.{ .name = "ship", .summary = "Ship to deploy" }} },
     .options = &.{
         .{ .long = "dry-run", .short = 'n', .summary = "Show the deployment without executing it" },
     },
@@ -35,8 +34,7 @@ const version_command: th.Command = .{
 const completion_command: th.Command = .{
     .name = "completion",
     .summary = "Generate a shell completion script",
-    .usage = "completion <bash|zsh|fish>",
-    .args = .{ .exact = 1 },
+    .args = .{ .positionals = &.{.{ .name = "shell", .summary = "bash, zsh, or fish" }} },
     .handler = generateCompletion,
 };
 

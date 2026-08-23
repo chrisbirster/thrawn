@@ -3,14 +3,14 @@ const th = @import("thrawn");
 
 const open_command: th.Command = .{
     .name = "open",
-    .args = .{ .exact = 1 },
+    .args = .{ .positionals = &.{.{ .name = "target" }} },
     .complete = completeTargets,
     .handler = open,
 };
 
 const completion_command: th.Command = .{
     .name = "completion",
-    .args = .{ .exact = 1 },
+    .args = .{ .positionals = &.{.{ .name = "shell" }} },
     .handler = generateCompletion,
 };
 

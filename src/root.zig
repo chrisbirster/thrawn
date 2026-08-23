@@ -4,6 +4,7 @@ pub const arguments = @import("arguments.zig");
 pub const options = @import("options.zig");
 pub const errors = @import("errors.zig");
 pub const help = @import("help.zig");
+pub const path = @import("path.zig");
 pub const suggestions = @import("suggestions.zig");
 pub const validation = @import("validation.zig");
 pub const completion = @import("completion/root.zig");
@@ -25,6 +26,7 @@ test {
     _ = @import("resolve.zig");
     _ = @import("validation.zig");
     _ = @import("suggestions.zig");
+    _ = @import("path.zig");
     _ = @import("help.zig");
     _ = @import("completion/root.zig");
 }

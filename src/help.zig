@@ -1,8 +1,14 @@
 const std = @import("std");
+const arguments = @import("arguments.zig");
 const Command = @import("command.zig").Command;
+const path = @import("path.zig");
 
-pub fn write(writer: *std.Io.Writer, command: *const Command) std.Io.Writer.Error!void {
-    try writer.print("{s}", .{command.name});
+pub fn write(
+    writer: *std.Io.Writer,
+    root: *const Command,
+    command: *const Command,
+) std.Io.Writer.Error!void {
+    try path.write(writer, root, command);
     if (command.summary.len > 0) try writer.print(" — {s}", .{command.summary});
     try writer.print("\n", .{});
 
@@ -10,8 +16,15 @@ pub fn write(writer: *std.Io.Writer, command: *const Command) std.Io.Writer.Erro
         try writer.print("\n{s}\n", .{command.description});
     }
 
-    try writer.print("\nUsage:\n  {s}", .{command.usage orelse command.name});
-    if (command.children.len > 0) try writer.print(" <command>", .{});
+    try writer.print("\nUsage:\n  ", .{});
+    if (command.usage) |usage| {
+        try writer.print("{s}", .{usage});
+    } else {
+        try path.write(writer, root, command);
+        if (command.children.len > 0) try writer.print(" <command>", .{});
+        try arguments.writeUsage(writer, command.args.positionals);
+        if (command.options.len > 0) try writer.print(" [options]", .{});
+    }
     try writer.print("\n", .{});
 
     var visible_children: usize = 0;
@@ -24,6 +37,16 @@ pub fn write(writer: *std.Io.Writer, command: *const Command) std.Io.Writer.Erro
         for (command.children) |child| {
             if (child.hidden) continue;
             try writer.print("  {s:<16} {s}\n", .{ child.name, child.summary });
+        }
+    }
+
+    if (command.args.positionals.len > 0) {
+        try writer.print("\nArguments:\n", .{});
+        for (command.args.positionals) |positional| {
+            try writer.print("  ", .{});
+            try arguments.writeLabel(writer, positional);
+            if (positional.summary.len > 0) try writer.print("\n      {s}", .{positional.summary});
+            try writer.print("\n", .{});
         }
     }
 
@@ -46,12 +69,17 @@ pub fn write(writer: *std.Io.Writer, command: *const Command) std.Io.Writer.Erro
     }
 }
 
-test "help is generated from command metadata" {
-    const child: Command = .{ .name = "status", .summary = "Show status" };
+test "help is generated from full command path and metadata" {
+    const child: Command = .{
+        .name = "status",
+        .summary = "Show status",
+        .args = .{ .positionals = &.{.{ .name = "target", .summary = "Target to inspect" }} },
+    };
     const root: Command = .{ .name = "demo", .summary = "Demo app", .children = &.{&child} };
-    var buffer: [1024]u8 = undefined;
+    var buffer: [2048]u8 = undefined;
     var writer: std.Io.Writer = .fixed(&buffer);
-    try write(&writer, &root);
-    try std.testing.expect(std.mem.indexOf(u8, writer.buffered(), "Commands:") != null);
-    try std.testing.expect(std.mem.indexOf(u8, writer.buffered(), "status") != null);
+    try write(&writer, &root, &child);
+    try std.testing.expect(std.mem.indexOf(u8, writer.buffered(), "demo status — Show status") != null);
+    try std.testing.expect(std.mem.indexOf(u8, writer.buffered(), "demo status <target>") != null);
+    try std.testing.expect(std.mem.indexOf(u8, writer.buffered(), "Target to inspect") != null);
 }
