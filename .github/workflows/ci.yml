@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Check formatting
+        run: zig fmt --check build.zig src tests examples
+
+  native:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+          - name: macos-aarch64
+            os: macos-15
+          - name: macos-x86_64
+            os: macos-15-intel
+          - name: windows-x86_64
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Zig version
+        run: zig version
+      - name: Build debug
+        run: zig build
+      - name: Test
+        run: zig build test
+      - name: Compile examples
+        run: zig build examples
+      - name: Demo help smoke test
+        run: zig build run -- --help
+      - name: Build release-safe
+        run: zig build -Doptimize=ReleaseSafe
