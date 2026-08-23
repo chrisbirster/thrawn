@@ -134,13 +134,25 @@ The release PR should summarize:
 
 After the release PR is merged into `main`, use the GitHub Actions **release** workflow instead of creating a tag locally.
 
-From GitHub:
+### GitHub website
 
-1. open **Actions**
-2. choose **release**
-3. choose **Run workflow**
-4. enter the version, for example `0.1.0`
-5. run the workflow
+1. open the repository
+2. open **Actions**
+3. choose **release**
+4. choose **Run workflow**
+5. enter the version, for example `0.1.0`
+6. run the workflow
+
+### GitHub Mobile
+
+GitHub Mobile supports manually dispatching workflows that use `workflow_dispatch`.
+
+1. open the Thrawn repository in GitHub Mobile
+2. open **Actions**
+3. choose **release**
+4. choose **Run workflow**
+5. enter the version
+6. run the workflow
 
 The workflow always releases the current `main` commit. It:
 
