@@ -54,10 +54,10 @@ pub fn build(b: *std.Build) void {
     }
 
     const examples_step = b.step("examples", "Compile all Thrawn examples");
-    addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-basic", "examples/basic/main.zig");
-    addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-nested", "examples/nested/main.zig");
-    addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-options", "examples/options/main.zig");
-    addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-completion", "examples/completion/main.zig");
+    _ = addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-basic", "examples/basic/main.zig");
+    _ = addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-nested", "examples/nested/main.zig");
+    _ = addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-options", "examples/options/main.zig");
+    _ = addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-completion", "examples/completion/main.zig");
     const docs_example = addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-docs", "examples/docs/main.zig");
 
     const run_docs = b.addRunArtifact(docs_example);
