@@ -1,40 +1,73 @@
 name: release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (for example: 0.1.0 or 0.2.0-rc.1)'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  verify-tag:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-      - name: Verify tag commit is on main
+
+      - name: Validate release request
+        id: release
         shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          git fetch origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-      - name: Verify tag matches package version
-        shell: bash
-        run: |
-          set -euo pipefail
-          package_version="$(sed -n 's/.*\.version = "\([^"]*\)".*/\1/p' build.zig.zon | head -n 1)"
-          tag_version="${GITHUB_REF_NAME#v}"
-          test -n "$package_version"
-          if [ "$package_version" != "$tag_version" ]; then
-            echo "tag version $tag_version does not match build.zig.zon version $package_version" >&2
+
+          version="${REQUESTED_VERSION#v}"
+          tag="v${version}"
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "invalid release version: $REQUESTED_VERSION" >&2
             exit 1
           fi
 
+          package_version="$(sed -n 's/.*\.version = "\([^"]*\)".*/\1/p' build.zig.zon | head -n 1)"
+          test -n "$package_version"
+
+          if [ "$package_version" != "$version" ]; then
+            echo "requested version $version does not match build.zig.zon version $package_version" >&2
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "tag $tag already exists" >&2
+            exit 1
+          fi
+
+          sha="$(git rev-parse HEAD)"
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+          echo "Release: $tag"
+          echo "Commit:  $sha"
+
   native:
-    needs: verify-tag
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -46,23 +79,47 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.16.0
+
       - run: zig build -Doptimize=ReleaseSafe
       - run: zig build test -Doptimize=ReleaseSafe
       - run: zig build examples -Doptimize=ReleaseSafe
+
       - name: Verify consumer package
         working-directory: tests/consumer
         run: zig build -Doptimize=ReleaseSafe
 
   publish:
     needs:
-      - verify-tag
+      - prepare
       - native
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
-      - uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+      - name: Create tag and GitHub release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          args=(
+            release create "$RELEASE_TAG"
+            --target "$RELEASE_SHA"
+            --title "$RELEASE_TAG"
+            --generate-notes
+          )
+
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+
+          gh "${args[@]}"
