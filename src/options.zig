@@ -287,7 +287,7 @@ test "long equals, attached short values, clusters, and end marker" {
     const definitions = [_]Option{
         .{ .long = "alpha", .short = 'a' },
         .{ .long = "beta", .short = 'b' },
-        .{ .long = "port", .short = 'p', .kind = .value, .value_type = .integer },
+        .{ .long = "port", .short = 'p', .kind = .value, .value_type = .integer, .repeatable = true },
     };
     const args = [_][]const u8{ "-ab", "-p8080", "--port=9090", "--", "--alpha" };
     var parsed = try parseWithMode(std.testing.allocator, &definitions, &args, false);
