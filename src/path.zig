@@ -1,50 +1,43 @@
 const std = @import("std");
 const Command = @import("command.zig").Command;
 
-/// Write the path from root to target. If target does not belong to root,
-/// fall back to the target's own name rather than producing misleading output.
-pub fn write(
-    writer: *std.Io.Writer,
-    root: *const Command,
-    target: *const Command,
-) std.Io.Writer.Error!void {
-    if (!contains(root, target)) {
+pub const max_depth = 128;
+
+pub fn write(writer: *std.Io.Writer, root: *const Command, target: *const Command) std.Io.Writer.Error!void {
+    var commands: [max_depth]*const Command = undefined;
+    const len = collect(root, target, &commands) orelse {
         try writer.print("{s}", .{target.name});
         return;
-    }
-
-    try writer.print("{s}", .{root.name});
-    if (root == target) return;
-
-    var current = root;
-    while (current != target) {
-        var next: ?*const Command = null;
-        for (current.children) |child| {
-            if (contains(child, target)) {
-                next = child;
-                break;
-            }
-        }
-
-        const child = next orelse return;
-        try writer.print(" {s}", .{child.name});
-        current = child;
+    };
+    for (commands[0..len], 0..) |command, index| {
+        if (index != 0) try writer.print(" ", .{});
+        try writer.print("{s}", .{command.name});
     }
 }
 
-pub fn contains(root: *const Command, target: *const Command) bool {
-    if (root == target) return true;
+pub fn collect(root: *const Command, target: *const Command, out: *[max_depth]*const Command) ?usize {
+    return collectInto(root, target, out, 0);
+}
+
+fn collectInto(root: *const Command, target: *const Command, out: *[max_depth]*const Command, depth: usize) ?usize {
+    if (depth >= out.len) return null;
+    out[depth] = root;
+    if (root == target) return depth + 1;
     for (root.children) |child| {
-        if (contains(child, target)) return true;
+        if (collectInto(child, target, out, depth + 1)) |len| return len;
     }
-    return false;
+    return null;
+}
+
+pub fn contains(root: *const Command, target: *const Command) bool {
+    var commands: [max_depth]*const Command = undefined;
+    return collect(root, target, &commands) != null;
 }
 
 test "write full nested command path" {
     const deploy: Command = .{ .name = "deploy" };
     const fleet: Command = .{ .name = "fleet", .children = &.{&deploy} };
     const root: Command = .{ .name = "demo", .children = &.{&fleet} };
-
     var buffer: [128]u8 = undefined;
     var writer: std.Io.Writer = .fixed(&buffer);
     try write(&writer, &root, &deploy);
