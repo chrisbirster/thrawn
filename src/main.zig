@@ -15,6 +15,7 @@ const deploy_command: th.Command = .{
     .options = &.{
         .{ .long = "dry-run", .short = 'n', .summary = "Show the deployment without executing it" },
     },
+    .complete = completeShips,
     .handler = deploy,
 };
 
@@ -31,11 +32,19 @@ const version_command: th.Command = .{
     .handler = version,
 };
 
+const completion_command: th.Command = .{
+    .name = "completion",
+    .summary = "Generate a shell completion script",
+    .usage = "completion <bash|zsh|fish>",
+    .args = .{ .exact = 1 },
+    .handler = generateCompletion,
+};
+
 const root_command: th.Command = .{
     .name = "thrawn-demo",
     .summary = "Command with precision",
     .version = "0.1.0-dev",
-    .children = &.{ &fleet_command, &version_command },
+    .children = &.{ &fleet_command, &version_command, &completion_command },
 };
 
 pub fn main(init: std.process.Init) !void {
@@ -56,6 +65,21 @@ fn deploy(ctx: *th.Context) !void {
     try ctx.print("Deploying {s}.\n", .{ship});
 }
 
+fn completeShips(ctx: *th.CompletionContext) !void {
+    try ctx.candidate("destroyer");
+    try ctx.candidate("cruiser");
+    try ctx.candidate("carrier");
+}
+
 fn version(ctx: *th.Context) !void {
     try ctx.print("thrawn-demo 0.1.0-dev\n", .{});
+}
+
+fn generateCompletion(ctx: *th.Context) !void {
+    const shell_name = ctx.argument(0).?;
+    const shell = th.completion.Shell.parse(shell_name) orelse {
+        try ctx.printError("error: unsupported shell '{s}'\n", .{shell_name});
+        return error.UnsupportedShell;
+    };
+    try th.completion.writeScript(ctx.stdout, shell, root_command.name);
 }
