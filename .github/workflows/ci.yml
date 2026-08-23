@@ -5,11 +5,18 @@ on:
     branches:
       - main
       - dev
-      - 'feature/**'
   pull_request:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   format:
@@ -51,7 +58,13 @@ jobs:
         run: zig build test
       - name: Compile examples
         run: zig build examples
-      - name: Demo help smoke test
+      - name: Root help smoke test
         run: zig build run -- --help
+      - name: Nested command smoke test
+        run: zig build run -- fleet status
+      - name: Option smoke test
+        run: zig build run -- fleet deploy destroyer --dry-run
+      - name: Completion protocol smoke test
+        run: zig build run -- --thrawn-complete fleet de
       - name: Build release-safe
         run: zig build -Doptimize=ReleaseSafe

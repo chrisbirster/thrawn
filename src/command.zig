@@ -5,6 +5,21 @@ const option = @import("options.zig");
 
 pub const Handler = *const fn (*Context) anyerror!void;
 
+pub const CompletionContext = struct {
+    allocator: std.mem.Allocator,
+    args: []const []const u8,
+    prefix: []const u8,
+    writer: *std.Io.Writer,
+
+    pub fn candidate(self: *CompletionContext, value: []const u8) std.Io.Writer.Error!void {
+        if (std.mem.startsWith(u8, value, self.prefix)) {
+            try self.writer.print("{s}\n", .{value});
+        }
+    }
+};
+
+pub const Completer = *const fn (*CompletionContext) anyerror!void;
+
 pub const Command = struct {
     name: []const u8,
     aliases: []const []const u8 = &.{},
@@ -15,6 +30,7 @@ pub const Command = struct {
     children: []const *const Command = &.{},
     default_child: ?*const Command = null,
     handler: ?Handler = null,
+    complete: ?Completer = null,
     args: arguments.Rules = .{},
     options: []const option.Option = &.{},
     hidden: bool = false,

@@ -1,6 +1,7 @@
 const std = @import("std");
 const Command = @import("command.zig").Command;
 const Context = @import("context.zig").Context;
+const completion = @import("completion/root.zig");
 const help = @import("help.zig");
 const options = @import("options.zig");
 const resolve_mod = @import("resolve.zig");
@@ -38,6 +39,11 @@ pub fn runArgs(
     stderr: *std.Io.Writer,
 ) !u8 {
     try validation.validate(root);
+
+    if (args.len > 0 and std.mem.eql(u8, args[0], "--thrawn-complete")) {
+        try completion.writeCandidates(allocator, stdout, root, args[1..]);
+        return exit.success;
+    }
 
     switch (resolve_mod.resolve(root, args)) {
         .help => |command| {
