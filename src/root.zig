@@ -1,5 +1,10 @@
 //! Thrawn is a composable command-tree framework for Zig.
 
+const build_options = @import("build_options");
+
+/// Package version supplied by `build.zig.zon`.
+pub const version: []const u8 = build_options.version;
+
 pub const arguments = @import("arguments.zig");
 pub const options = @import("options.zig");
 pub const errors = @import("errors.zig");
@@ -18,6 +23,10 @@ pub const Resolution = @import("resolve.zig").Resolution;
 pub const resolve = @import("resolve.zig").resolve;
 pub const run = @import("run.zig").run;
 pub const runArgs = @import("run.zig").runArgs;
+
+test "package version is available through the public module" {
+    try @import("std").testing.expect(version.len > 0);
+}
 
 test {
     _ = @import("arguments.zig");

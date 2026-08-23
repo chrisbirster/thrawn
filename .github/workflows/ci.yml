@@ -54,10 +54,13 @@ jobs:
         run: zig version
       - name: Build debug
         run: zig build
-      - name: Test
+      - name: Test debug
         run: zig build test
-      - name: Compile examples
+      - name: Compile examples debug
         run: zig build examples
+      - name: Consumer package smoke test
+        working-directory: tests/consumer
+        run: zig build
       - name: Root help smoke test
         run: zig build run -- --help
       - name: Nested command smoke test
@@ -67,4 +70,11 @@ jobs:
       - name: Completion protocol smoke test
         run: zig build run -- --thrawn-complete fleet de
       - name: Build release-safe
+        run: zig build -Doptimize=ReleaseSafe
+      - name: Test release-safe
+        run: zig build test -Doptimize=ReleaseSafe
+      - name: Compile examples release-safe
+        run: zig build examples -Doptimize=ReleaseSafe
+      - name: Consumer package release-safe
+        working-directory: tests/consumer
         run: zig build -Doptimize=ReleaseSafe

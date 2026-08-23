@@ -1,13 +1,19 @@
 const std = @import("std");
+const package = @import("build.zig.zon");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const build_options = b.addOptions();
+    build_options.addOption([]const u8, "version", package.version);
+
     const thrawn = b.addModule("thrawn", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
+        .optimize = optimize,
     });
+    thrawn.addOptions("build_options", build_options);
 
     const demo = b.addExecutable(.{
         .name = "thrawn-demo",
