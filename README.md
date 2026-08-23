@@ -74,3 +74,7 @@ zig build run -- --thrawn-complete fleet de
 Development follows `feature/* -> dev -> main -> vX.Y.Z`.
 
 See `docs/` for architecture, command model, testing strategy, installation, and roadmap.
+
+## License
+
+Thrawn is licensed under the MIT License. See [`LICENSE`](LICENSE).
