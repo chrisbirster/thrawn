@@ -1,71 +1,136 @@
 const std = @import("std");
-const Io = std.Io;
+const th = @import("thrawn");
 
-const thrawn = @import("thrawn");
+const status_command: th.Command = .{
+    .name = "status",
+    .group = "Fleet Commands",
+    .summary = "Show fleet status",
+    .handler = status,
+};
+
+const deploy_command: th.Command = .{
+    .name = "deploy",
+    .group = "Fleet Commands",
+    .summary = "Deploy a ship",
+    .args = .{ .positionals = &.{.{ .name = "ship", .summary = "Ship to deploy" }} },
+    .options = &.{
+        .{ .long = "dry-run", .short = 'n', .summary = "Show the deployment without executing it", .conflicts_with = &.{"force"} },
+        .{ .long = "force", .short = 'f', .summary = "Force deployment", .conflicts_with = &.{"dry-run"} },
+        .{ .long = "retries", .short = 'r', .kind = .value, .value_type = .integer, .default_value = "1", .value_name = "count", .summary = "Retry count" },
+        .{ .long = "tag", .short = 't', .kind = .value, .repeatable = true, .summary = "Attach a repeatable tag" },
+    },
+    .complete = completeShips,
+    .handler = deploy,
+};
+
+const fleet_command: th.Command = .{
+    .name = "fleet",
+    .group = "Fleet Commands",
+    .summary = "Manage the fleet",
+    .children = &.{ &status_command, &deploy_command },
+};
+
+const exec_command: th.Command = .{
+    .name = "exec",
+    .group = "Utility Commands",
+    .summary = "Pass trailing arguments through unchanged",
+    .args = .{ .positionals = &.{
+        .{ .name = "program", .summary = "Program to execute" },
+        .{ .name = "args", .summary = "Arguments passed through", .required = false, .variadic = true },
+    } },
+    .passthrough = true,
+    .handler = exec,
+};
+
+const version_command: th.Command = .{
+    .name = "version",
+    .group = "Developer Commands",
+    .aliases = &.{"v"},
+    .summary = "Print version information",
+    .handler = printVersion,
+};
+
+const completion_command: th.Command = .{
+    .name = "completion",
+    .group = "Developer Commands",
+    .summary = "Generate a shell completion script",
+    .args = .{ .positionals = &.{.{ .name = "shell", .summary = "bash, zsh, or fish" }} },
+    .handler = generateCompletion,
+};
+
+const docs_command: th.Command = .{
+    .name = "docs",
+    .group = "Developer Commands",
+    .summary = "Generate command documentation",
+    .args = .{ .positionals = &.{.{ .name = "format", .summary = "markdown or man" }} },
+    .handler = generateDocs,
+};
+
+const root_command: th.Command = .{
+    .name = "thrawn-demo",
+    .summary = "Command with precision",
+    .version = th.version,
+    .options = &.{
+        .{ .long = "verbose", .short = 'V', .global = true, .summary = "Enable verbose diagnostics" },
+        .{ .long = "color", .kind = .value, .value_type = .choice, .choices = &.{ "auto", "always", "never" }, .default_value = "auto", .global = true, .summary = "Color mode" },
+    },
+    .before = before,
+    .after = after,
+    .children = &.{ &fleet_command, &exec_command, &version_command, &completion_command, &docs_command },
+};
 
 pub fn main(init: std.process.Init) !void {
-    // Prints to stderr, unbuffered, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    const code = try th.run(init, &root_command);
+    if (code != th.errors.success) std.process.exit(code);
+}
 
-    // This is appropriate for anything that lives as long as the process.
-    const arena: std.mem.Allocator = init.arena.allocator();
+fn before(ctx: *th.Context) !void {
+    if (ctx.hasOption("verbose")) try ctx.printError("verbose: running {s}\n", .{ctx.command.name});
+}
 
-    // Accessing command line arguments:
-    const args = try init.minimal.args.toSlice(arena);
-    for (args) |arg| {
-        std.log.info("arg: {s}", .{arg});
+fn after(_: *th.Context) !void {}
+
+fn status(ctx: *th.Context) !void {
+    try ctx.print("The fleet is operating within parameters.\n", .{});
+}
+
+fn deploy(ctx: *th.Context) !void {
+    const ship = ctx.argument(0).?;
+    const retries = (try ctx.optionInt(u32, "retries")) orelse 1;
+    if (ctx.hasOption("dry-run")) {
+        try ctx.print("Would deploy {s} with {d} attempt(s).\n", .{ ship, retries });
+        return;
     }
-
-    // In order to do I/O operations need an `Io` instance.
-    const io = init.io;
-
-    // Stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
-    const stdout_writer = &stdout_file_writer.interface;
-
-    try thrawn.printAnotherMessage(stdout_writer);
-
-    try stdout_writer.flush(); // Don't forget to flush!
+    try ctx.print("Deploying {s} with {d} attempt(s).\n", .{ ship, retries });
 }
 
-test "simple test" {
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(i32) = .empty;
-    defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(gpa, 42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+fn exec(ctx: *th.Context) !void {
+    for (ctx.args, 0..) |arg, index| {
+        if (index != 0) try ctx.print(" ", .{});
+        try ctx.print("{s}", .{arg});
+    }
+    try ctx.print("\n", .{});
 }
 
-test "fuzz example" {
-    try std.testing.fuzz({}, testOne, .{});
+fn completeShips(ctx: *th.CompletionContext) !void {
+    try ctx.candidate("destroyer");
+    try ctx.candidate("cruiser");
+    try ctx.candidate("carrier");
 }
 
-fn testOne(context: void, smith: *std.testing.Smith) !void {
-    _ = context;
-    // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
+fn printVersion(ctx: *th.Context) !void {
+    try ctx.print("thrawn-demo {s}\n", .{th.version});
+}
 
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(u8) = .empty;
-    defer list.deinit(gpa);
-    while (!smith.eos()) switch (smith.value(enum { add_data, dup_data })) {
-        .add_data => {
-            const slice = try list.addManyAsSlice(gpa, smith.value(u4));
-            smith.bytes(slice);
-        },
-        .dup_data => {
-            if (list.items.len == 0) continue;
-            if (list.items.len > std.math.maxInt(u32)) return error.SkipZigTest;
-            const len = smith.valueRangeAtMost(u32, 1, @min(32, list.items.len));
-            const off = smith.valueRangeAtMost(u32, 0, @intCast(list.items.len - len));
-            try list.appendSlice(gpa, list.items[off..][0..len]);
-            try std.testing.expectEqualSlices(
-                u8,
-                list.items[off..][0..len],
-                list.items[list.items.len - len ..],
-            );
-        },
-    };
+fn generateCompletion(ctx: *th.Context) !void {
+    const shell_name = ctx.argument(0).?;
+    const shell = th.completion.Shell.parse(shell_name) orelse return error.UnsupportedShell;
+    try th.completion.writeScript(ctx.stdout, shell, root_command.name);
+}
+
+fn generateDocs(ctx: *th.Context) !void {
+    const format = ctx.argument(0).?;
+    if (std.mem.eql(u8, format, "markdown")) return th.docs.writeMarkdown(ctx.stdout, &root_command);
+    if (std.mem.eql(u8, format, "man")) return th.docs.writeMan(ctx.stdout, &root_command);
+    return error.UnsupportedDocumentationFormat;
 }

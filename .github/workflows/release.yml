@@ -1,0 +1,68 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tag commit is on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(sed -n 's/.*\.version = "\([^"]*\)".*/\1/p' build.zig.zon | head -n 1)"
+          tag_version="${GITHUB_REF_NAME#v}"
+          test -n "$package_version"
+          if [ "$package_version" != "$tag_version" ]; then
+            echo "tag version $tag_version does not match build.zig.zon version $package_version" >&2
+            exit 1
+          fi
+
+  native:
+    needs: verify-tag
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-15
+          - macos-15-intel
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - run: zig build -Doptimize=ReleaseSafe
+      - run: zig build test -Doptimize=ReleaseSafe
+      - run: zig build examples -Doptimize=ReleaseSafe
+      - name: Verify consumer package
+        working-directory: tests/consumer
+        run: zig build -Doptimize=ReleaseSafe
+
+  publish:
+    needs:
+      - verify-tag
+      - native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
