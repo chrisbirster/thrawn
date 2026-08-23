@@ -19,7 +19,7 @@ pub const Rules = struct {
         const minimum = self.min orelse self.inferredMinimum();
         if (count < minimum) return false;
 
-        const maximum = self.max orelse self.inferredMaximum();
+        const maximum: ?usize = if (self.max) |value| value else self.inferredMaximum();
         if (maximum) |value| {
             if (count > value) return false;
         }
