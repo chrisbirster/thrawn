@@ -2,9 +2,11 @@
 
 All notable changes to Thrawn are documented here.
 
-The project follows Semantic Versioning once public releases begin.
+The project follows Semantic Versioning.
 
 ## Unreleased
+
+## 0.1.0 - 2026-08-23
 
 ### Added
 
@@ -27,3 +29,7 @@ The project follows Semantic Versioning once public releases begin.
 - Native CI verification on Linux, macOS ARM64, macOS x86_64, and Windows x86_64.
 - External consumer-package verification in Debug and ReleaseSafe.
 - Tag-gated release workflow with package-version validation.
+
+### License
+
+- Released under the MIT License.
