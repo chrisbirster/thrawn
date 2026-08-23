@@ -44,8 +44,12 @@ pub fn build(b: *std.Build) void {
         "tests/help_test.zig",
         "tests/validation_test.zig",
         "tests/completion_test.zig",
-    }) |path| {
-        const tests = addTest(b, thrawn, target, optimize, path);
+        "tests/advanced_options_test.zig",
+        "tests/hooks_test.zig",
+        "tests/passthrough_test.zig",
+        "tests/docs_test.zig",
+    }) |test_path| {
+        const tests = addTest(b, thrawn, target, optimize, test_path);
         test_step.dependOn(&tests.step);
     }
 
@@ -54,18 +58,17 @@ pub fn build(b: *std.Build) void {
     addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-nested", "examples/nested/main.zig");
     addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-options", "examples/options/main.zig");
     addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-completion", "examples/completion/main.zig");
+    const docs_example = addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-docs", "examples/docs/main.zig");
+
+    const run_docs = b.addRunArtifact(docs_example);
+    const docs_step = b.step("docs", "Generate example Markdown command documentation");
+    docs_step.dependOn(&run_docs.step);
 }
 
-fn addTest(
-    b: *std.Build,
-    thrawn: *std.Build.Module,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    path: []const u8,
-) *std.Build.Step.Run {
+fn addTest(b: *std.Build, thrawn: *std.Build.Module, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, test_path: []const u8) *std.Build.Step.Run {
     const tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path(path),
+            .root_source_file = b.path(test_path),
             .target = target,
             .optimize = optimize,
             .imports = &.{.{ .name = "thrawn", .module = thrawn }},
@@ -74,23 +77,16 @@ fn addTest(
     return b.addRunArtifact(tests);
 }
 
-fn addExample(
-    b: *std.Build,
-    step: *std.Build.Step,
-    thrawn: *std.Build.Module,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    name: []const u8,
-    path: []const u8,
-) void {
+fn addExample(b: *std.Build, step: *std.Build.Step, thrawn: *std.Build.Module, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, name: []const u8, example_path: []const u8) *std.Build.Step.Compile {
     const example = b.addExecutable(.{
         .name = name,
         .root_module = b.createModule(.{
-            .root_source_file = b.path(path),
+            .root_source_file = b.path(example_path),
             .target = target,
             .optimize = optimize,
             .imports = &.{.{ .name = "thrawn", .module = thrawn }},
         }),
     });
     step.dependOn(&example.step);
+    return example;
 }

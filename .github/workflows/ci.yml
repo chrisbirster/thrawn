@@ -65,10 +65,16 @@ jobs:
         run: zig build run -- --help
       - name: Nested command smoke test
         run: zig build run -- fleet status
-      - name: Option smoke test
-        run: zig build run -- fleet deploy destroyer --dry-run
+      - name: Global option smoke test
+        run: zig build run -- --verbose fleet status
+      - name: Option syntax smoke test
+        run: zig build run -- fleet deploy destroyer -nr3 -talpha --tag=beta
+      - name: Passthrough smoke test
+        run: zig build run -- exec node --inspect index.js
       - name: Completion protocol smoke test
         run: zig build run -- --thrawn-complete fleet de
+      - name: Generated docs smoke test
+        run: zig build docs
       - name: Build release-safe
         run: zig build -Doptimize=ReleaseSafe
       - name: Test release-safe
