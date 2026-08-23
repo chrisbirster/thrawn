@@ -21,6 +21,17 @@ jobs:
           set -euo pipefail
           git fetch origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(sed -n 's/.*\.version = "\([^"]*\)".*/\1/p' build.zig.zon | head -n 1)"
+          tag_version="${GITHUB_REF_NAME#v}"
+          test -n "$package_version"
+          if [ "$package_version" != "$tag_version" ]; then
+            echo "tag version $tag_version does not match build.zig.zon version $package_version" >&2
+            exit 1
+          fi
 
   native:
     needs: verify-tag
@@ -41,6 +52,9 @@ jobs:
       - run: zig build -Doptimize=ReleaseSafe
       - run: zig build test -Doptimize=ReleaseSafe
       - run: zig build examples -Doptimize=ReleaseSafe
+      - name: Verify consumer package
+        working-directory: tests/consumer
+        run: zig build -Doptimize=ReleaseSafe
 
   publish:
     needs:

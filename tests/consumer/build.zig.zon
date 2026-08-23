@@ -1,0 +1,14 @@
+.{
+    .name = .thrawn_consumer_test,
+    .version = "0.0.0",
+    .fingerprint = 0xf380657c5240b1ca,
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .thrawn = .{ .path = "../.." },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

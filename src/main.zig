@@ -28,7 +28,7 @@ const version_command: th.Command = .{
     .name = "version",
     .aliases = &.{"v"},
     .summary = "Print version information",
-    .handler = version,
+    .handler = printVersion,
 };
 
 const completion_command: th.Command = .{
@@ -41,7 +41,7 @@ const completion_command: th.Command = .{
 const root_command: th.Command = .{
     .name = "thrawn-demo",
     .summary = "Command with precision",
-    .version = "0.1.0-dev",
+    .version = th.version,
     .children = &.{ &fleet_command, &version_command, &completion_command },
 };
 
@@ -69,8 +69,8 @@ fn completeShips(ctx: *th.CompletionContext) !void {
     try ctx.candidate("carrier");
 }
 
-fn version(ctx: *th.Context) !void {
-    try ctx.print("thrawn-demo 0.1.0-dev\n", .{});
+fn printVersion(ctx: *th.Context) !void {
+    try ctx.print("thrawn-demo {s}\n", .{th.version});
 }
 
 fn generateCompletion(ctx: *th.Context) !void {
