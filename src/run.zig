@@ -4,6 +4,7 @@ const Context = @import("context.zig").Context;
 const completion = @import("completion/root.zig");
 const help = @import("help.zig");
 const options = @import("options.zig");
+const path = @import("path.zig");
 const resolve_mod = @import("resolve.zig");
 const suggestions = @import("suggestions.zig");
 const validation = @import("validation.zig");
@@ -46,35 +47,43 @@ pub fn runArgs(
     }
 
     switch (resolve_mod.resolve(root, args)) {
-        .help => |command| {
-            try help.write(stdout, command);
+        .help => |selected| {
+            try help.write(stdout, selected.root, selected.command);
             return exit.success;
         },
         .unknown => |unknown| {
-            try stderr.print("error: unknown command '{s}' for '{s}'\n", .{ unknown.value, unknown.parent.name });
+            try stderr.print("error: unknown command '{s}' for '", .{unknown.value});
+            try path.write(stderr, unknown.root, unknown.parent);
+            try stderr.print("'\n", .{});
             if (suggestions.bestChild(unknown.parent, unknown.value)) |suggestion| {
                 try stderr.print("Did you mean '{s}'?\n", .{suggestion.name});
             }
             try stderr.print("\n", .{});
-            try help.write(stderr, unknown.parent);
+            try help.write(stderr, unknown.root, unknown.parent);
             return exit.usage;
         },
         .execute => |selected| {
             var parsed = options.parse(allocator, selected.command.options, selected.args) catch |err| {
-                try stderr.print("error: invalid options for '{s}': {s}\n\n", .{ selected.command.name, @errorName(err) });
-                try help.write(stderr, selected.command);
+                try stderr.print("error: invalid options for '", .{});
+                try path.write(stderr, selected.root, selected.command);
+                try stderr.print("': {s}\n\n", .{@errorName(err)});
+                try help.write(stderr, selected.root, selected.command);
                 return exit.usage;
             };
             defer parsed.deinit();
 
             if (!selected.command.args.valid(parsed.positionals.len)) {
-                try stderr.print("error: invalid argument count for '{s}'\n\n", .{selected.command.name});
-                try help.write(stderr, selected.command);
+                try stderr.print("error: invalid argument count for '", .{});
+                try path.write(stderr, selected.root, selected.command);
+                try stderr.print("'\n\n", .{});
+                try help.write(stderr, selected.root, selected.command);
                 return exit.usage;
             }
 
             if (selected.command.deprecated) |message| {
-                try stderr.print("warning: '{s}' is deprecated: {s}\n", .{ selected.command.name, message });
+                try stderr.print("warning: '", .{});
+                try path.write(stderr, selected.root, selected.command);
+                try stderr.print("' is deprecated: {s}\n", .{message});
             }
 
             var context: Context = .{

@@ -4,10 +4,17 @@ pub const usage: u8 = 2;
 
 pub const ValidationError = error{
     EmptyCommandName,
+    EmptyAlias,
     DuplicateCommandName,
     DuplicateAlias,
     InvalidDefaultChild,
     EmptyOptionName,
     DuplicateOptionName,
     DuplicateShortOption,
+    EmptyPositionalName,
+    DuplicatePositionalName,
+    RequiredPositionalAfterOptional,
+    VariadicPositionalNotLast,
+    CommandCycle,
+    CommandTreeTooDeep,
 };

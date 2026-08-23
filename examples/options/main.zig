@@ -3,8 +3,7 @@ const th = @import("thrawn");
 
 const greet_command: th.Command = .{
     .name = "greet",
-    .usage = "greet <name> [--loud]",
-    .args = .{ .exact = 1 },
+    .args = .{ .positionals = &.{.{ .name = "name", .summary = "Person to greet" }} },
     .options = &.{.{ .long = "loud", .short = 'l' }},
     .handler = greet,
 };

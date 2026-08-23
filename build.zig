@@ -29,13 +29,19 @@ pub fn build(b: *std.Build) void {
     const module_tests = b.addTest(.{ .root_module = thrawn });
     const run_module_tests = b.addRunArtifact(module_tests);
 
-    const public_tests = addTest(b, thrawn, target, optimize, "tests/root.zig");
-    const completion_tests = addTest(b, thrawn, target, optimize, "tests/completion_test.zig");
-
     const test_step = b.step("test", "Run unit and public API tests");
     test_step.dependOn(&run_module_tests.step);
-    test_step.dependOn(&public_tests.step);
-    test_step.dependOn(&completion_tests.step);
+    inline for (.{
+        "tests/root.zig",
+        "tests/resolve_test.zig",
+        "tests/options_test.zig",
+        "tests/help_test.zig",
+        "tests/validation_test.zig",
+        "tests/completion_test.zig",
+    }) |path| {
+        const tests = addTest(b, thrawn, target, optimize, path);
+        test_step.dependOn(&tests.step);
+    }
 
     const examples_step = b.step("examples", "Compile all Thrawn examples");
     addExample(b, examples_step, thrawn, target, optimize, "thrawn-example-basic", "examples/basic/main.zig");
