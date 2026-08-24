@@ -9,7 +9,8 @@ fn useState(ctx: *th.Context) !void {
 }
 
 test "public runtime options expose typed state" {
-    const root: th.Command = .{ .name = "demo", .handler = useState, .args = .{ .exact = 0 } };
+    const leaf: th.Command = .{ .name = "go", .handler = useState, .args = .{ .exact = 0 } };
+    const root: th.Command = .{ .name = "demo", .children = &.{&leaf} };
     var state: State = .{};
     var stdout_buffer: [64]u8 = undefined;
     var stderr_buffer: [64]u8 = undefined;
@@ -19,7 +20,7 @@ test "public runtime options expose typed state" {
     const code = try th.runArgsWithOptions(
         std.testing.allocator,
         &root,
-        &.{},
+        &.{"go"},
         &stdout,
         &stderr,
         .{ .state = &state },
