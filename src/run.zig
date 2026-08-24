@@ -245,7 +245,8 @@ fn incrementState(ctx: *Context) !void {
 }
 
 test "application state reaches handlers" {
-    const root: Command = .{ .name = "demo", .handler = incrementState, .args = .{ .exact = 0 } };
+    const leaf: Command = .{ .name = "go", .handler = incrementState, .args = .{ .exact = 0 } };
+    const root: Command = .{ .name = "demo", .children = &.{&leaf} };
     var state: TestState = .{};
     var stdout_buffer: [64]u8 = undefined;
     var stderr_buffer: [64]u8 = undefined;
@@ -255,7 +256,7 @@ test "application state reaches handlers" {
     const code = try runArgsWithOptions(
         std.testing.allocator,
         &root,
-        &.{},
+        &.{"go"},
         &stdout,
         &stderr,
         .{ .state = &state },
