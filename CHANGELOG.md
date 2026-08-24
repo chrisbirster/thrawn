@@ -6,6 +6,17 @@ The project follows Semantic Versioning.
 
 ## Unreleased
 
+### Added
+
+- Explicit context lifetime contract: positional arguments and parsed option values are borrowed for the duration of the current handler or hook invocation.
+- `Context.dupeArgument` and `Context.dupeArguments` for retaining positional values in application-owned memory.
+- `Context.dupeOptionValue` and `Context.dupeOptionValueAt` for retaining option values, including repeatable option occurrences.
+- Regression coverage for retaining argument and option values after Thrawn parser teardown.
+
+### Changed
+
+- Development version advanced to `0.3.0-dev`.
+
 ## 0.2.0 - 2026-08-23
 
 ### Added

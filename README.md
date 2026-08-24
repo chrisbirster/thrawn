@@ -16,6 +16,7 @@ Thrawn is a composable command-tree framework for Zig 0.16. It provides the mech
 - grouped generated help with full nested command paths
 - configurable `help`, `-h`, and `--help` token handling
 - typed application state available to handlers and hooks through `Context.state(T)`
+- explicit borrowed context lifetimes with owned argument/option duplication helpers
 - before/after hooks inherited through the command tree
 - passthrough commands for wrapping other executables
 - generated Markdown and man-page documentation
@@ -30,10 +31,10 @@ Thrawn is a composable command-tree framework for Zig 0.16. It provides the mech
 
 ## Add Thrawn to a Zig project
 
-For a tagged release:
+For a tagged release, replace `<version>` with the release you want to pin:
 
 ```sh
-zig fetch --save git+https://github.com/chrisbirster/thrawn#v0.2.0
+zig fetch --save git+https://github.com/chrisbirster/thrawn#v<version>
 ```
 
 Then expose the dependency module from your `build.zig` and import it normally:
@@ -65,6 +66,24 @@ const code = try th.runWithOptions(init, &root_command, .{
 ```
 
 The state pointer is application-owned and must remain valid for the duration of the run.
+
+## Context value lifetimes
+
+`ctx.args`, `ctx.options`, `ctx.argument`, `ctx.optionValue`, and `ctx.optionValueAt` are borrowed views for the duration of the current handler or hook invocation. Do not retain those slices after the invocation returns.
+
+When application state must keep a value, duplicate it with an application-owned allocator:
+
+```zig
+fn add(ctx: *th.Context) !void {
+    const app = ctx.state(App) orelse return error.MissingAppState;
+
+    app.name = try ctx.dupeArgument(app.arena.allocator(), 0);
+    app.fields = try ctx.dupeArguments(app.arena.allocator(), 1);
+    app.config_path = try ctx.dupeOptionValue(app.arena.allocator(), "config");
+}
+```
+
+For repeatable options, `dupeOptionValueAt` duplicates a specific occurrence. See [`docs/lifetimes.md`](docs/lifetimes.md) for ownership and cleanup details.
 
 ## Application-owned `help` commands
 

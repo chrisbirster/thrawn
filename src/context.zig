@@ -7,8 +7,19 @@ pub const Context = struct {
     root: *const Command,
     command: *const Command,
     command_path: []const *const Command,
+
+    /// Borrowed positional arguments for the current handler/hook invocation.
+    /// Do not retain this slice beyond the invocation. Use `dupeArgument` or
+    /// `dupeArguments` with an application-owned allocator when values must
+    /// outlive the current context.
     args: []const []const u8,
+
+    /// Borrowed parsed option values for the current handler/hook invocation.
+    /// Do not retain this slice or values returned by `optionValue` /
+    /// `optionValueAt` beyond the invocation. Use `dupeOptionValue` or
+    /// `dupeOptionValueAt` when a value must be retained.
     options: []const option.Value = &.{},
+
     stdout: *std.Io.Writer,
     stderr: *std.Io.Writer,
     app_state: ?*anyopaque = null,
@@ -21,6 +32,34 @@ pub const Context = struct {
     pub fn argument(self: *const Context, index: usize) ?[]const u8 {
         if (index >= self.args.len) return null;
         return self.args[index];
+    }
+
+    /// Duplicate one positional argument into application-owned memory.
+    /// The caller owns the returned allocation.
+    pub fn dupeArgument(self: *const Context, allocator: std.mem.Allocator, index: usize) !?[]u8 {
+        const value = self.argument(index) orelse return null;
+        return try allocator.dupe(u8, value);
+    }
+
+    /// Duplicate positional arguments from `start` through the end into
+    /// application-owned memory. The caller owns both the returned outer slice
+    /// and every string allocation inside it.
+    pub fn dupeArguments(self: *const Context, allocator: std.mem.Allocator, start: usize) ![][]u8 {
+        const source = if (start < self.args.len) self.args[start..] else &.{};
+        const duplicated = try allocator.alloc([]u8, source.len);
+        errdefer allocator.free(duplicated);
+
+        var initialized: usize = 0;
+        errdefer {
+            for (duplicated[0..initialized]) |value| allocator.free(value);
+        }
+
+        for (source, 0..) |value, index| {
+            duplicated[index] = try allocator.dupe(u8, value);
+            initialized += 1;
+        }
+
+        return duplicated;
     }
 
     pub fn hasOption(self: *const Context, long: []const u8) bool {
@@ -53,6 +92,20 @@ pub const Context = struct {
             found += 1;
         }
         return null;
+    }
+
+    /// Duplicate the latest value for an option into application-owned memory.
+    /// The caller owns the returned allocation.
+    pub fn dupeOptionValue(self: *const Context, allocator: std.mem.Allocator, long: []const u8) !?[]u8 {
+        const value = self.optionValue(long) orelse return null;
+        return try allocator.dupe(u8, value);
+    }
+
+    /// Duplicate one occurrence of a repeatable option into application-owned
+    /// memory. The caller owns the returned allocation.
+    pub fn dupeOptionValueAt(self: *const Context, allocator: std.mem.Allocator, long: []const u8, wanted: usize) !?[]u8 {
+        const value = self.optionValueAt(long, wanted) orelse return null;
+        return try allocator.dupe(u8, value);
     }
 
     pub fn optionInt(self: *const Context, comptime T: type, long: []const u8) !?T {
