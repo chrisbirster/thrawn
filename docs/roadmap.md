@@ -1,128 +1,59 @@
 # Roadmap
 
-This roadmap defines the path from the initial `zig init` scaffold to Thrawn 1.0.
+Thrawn is past the initial framework-construction phase. The roadmap is now driven by real consumer usage, especially Deez, rather than by adding features speculatively.
 
-The milestones describe behavior, not mandatory file counts. The implementation grew into modules only as their responsibilities became distinct.
+## Current status
 
-## Implementation status
+Implemented and validated across Linux, macOS ARM64, macOS x86_64, and Windows x86_64:
 
-The Phase 0 through Phase 3 architecture is now implemented on `dev` through feature branches. Before a 1.0 release, the remaining work is release hardening: API review, package metadata/version synchronization, installation documentation, and selecting a project license.
+- composable nested command trees and aliases
+- positional metadata and validation
+- long/short options, clusters, attached values, and `--`
+- typed option values, defaults, repeatable options, and constraints
+- inherited global options
+- generated help and shell completion
+- hooks and passthrough commands
+- generated Markdown/man documentation
+- first-class CLI testing harness
+- typed application state through `Context.state(T)`
+- configurable help-token handling
+- Debug and ReleaseSafe consumer-package verification
 
-## Phase 0 — Command engine
+Deez is the first substantial external consumer and is used to identify framework ergonomics and correctness gaps.
 
-Implemented:
+## v0.3.0 — Context lifetime safety
 
-- `Command`
-- nested child commands
-- aliases
-- leaf handlers
-- positional values passed to handlers
-- basic resolution
-- generated help
-- unit tests for tree traversal
+In development:
 
-## Phase 1 — Reliable execution core
+- document `Context` argument and option views as borrowed for the current handler/hook invocation
+- provide owned duplication helpers for arguments and option values
+- cover retained-value behavior after parser teardown
+- backfill Deez to use the owned API at application boundaries
 
-Implemented:
+The goal is to make ownership explicit without forcing allocations on handlers that consume values synchronously.
 
-- proper stdout writer
-- proper stderr writer
-- explicit framework errors and exit codes
-- full nested command paths in resolution/help/errors
-- named positional declarations and validation
-- useful unknown-command diagnostics
-- exact tests for help and error output
+## After v0.3.0
 
-## Phase 2 — Complete core CLI framework
+Priorities should continue to come from consumer pressure. Likely work includes:
 
-Implemented:
+1. typed positional argument declarations and accessors
+2. required-state ergonomics such as `requireState(T)` if repeated consumer code justifies it
+3. more structured framework errors for applications that need custom terminal UX
+4. parser fuzzing for option clusters, `--`, aliases, globals, nested commands, and variadic arguments
+5. a second substantial external consumer so the API is not optimized only around Deez
+6. public API audit and accidental-surface removal
+7. migration/deprecation policy before API freeze
 
-- long options
-- short options
-- boolean switches
-- valued options
-- option validation
-- default child commands
-- hidden commands
-- deprecated command metadata
-- command-tree validation
-- duplicate/collision detection
-- typo suggestions
-- generated usage/help formatting
+## Path to 1.0
 
-At the end of Phase 2, Thrawn is considered a complete core framework and is suitable for substantial real-world use.
+Thrawn should reach `1.0.0` only after:
 
-## Phase 3 — Shell completion and 1.0
-
-Implemented:
-
-- shared completion engine
-- child-command completion
-- option completion
-- positional completion callbacks
-- hidden-command filtering
-- Bash integration
-- Zsh integration
-- Fish integration
-
-The same command tree drives runtime resolution and completion, while application-defined completers can provide domain-specific values.
-
-## Target source layout
-
-```text
-src/
-├── root.zig
-├── command.zig
-├── context.zig
-├── resolve.zig
-├── run.zig
-├── arguments.zig
-├── options.zig
-├── validation.zig
-├── help.zig
-├── errors.zig
-├── suggestions.zig
-├── path.zig
-└── completion/
-    ├── root.zig
-    ├── engine.zig
-    ├── bash.zig
-    ├── zsh.zig
-    └── fish.zig
-```
-
-## Examples
-
-```text
-examples/
-├── basic/
-├── nested/
-├── options/
-└── completion/
-```
-
-## Test suite
-
-```text
-tests/
-├── root.zig
-├── resolve_test.zig
-├── options_test.zig
-├── help_test.zig
-├── validation_test.zig
-└── completion_test.zig
-```
-
-## Release hardening
-
-Before `v1.0.0`:
-
-- review the public API names and remove accidental surface area
-- synchronize `build.zig.zon` versioning with release tags
-- document dependency installation and shell completion installation
-- select and add the project license
-- maintain `CHANGELOG.md`
-- run the native Linux/macOS/Windows matrix from the release tag
+- multiple real applications use it without internal workarounds
+- argument/option ownership rules are stable
+- public command/context/options APIs have been reviewed for long-term naming and semantics
+- parser fuzzing and the native Debug/ReleaseSafe matrix are consistently green
+- installation, completion, generated-doc, and testing workflows are documented
+- breaking changes have a documented migration path
 
 ## Release rule
 
