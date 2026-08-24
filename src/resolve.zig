@@ -2,6 +2,29 @@ const std = @import("std");
 const Command = @import("command.zig").Command;
 const options = @import("options.zig");
 
+pub const HelpTokens = struct {
+    command: ?[]const u8 = "help",
+    short: ?[]const u8 = "-h",
+    long: ?[]const u8 = "--help",
+
+    pub fn matches(self: HelpTokens, value: []const u8) bool {
+        if (self.command) |token| {
+            if (std.mem.eql(u8, value, token)) return true;
+        }
+        if (self.short) |token| {
+            if (std.mem.eql(u8, value, token)) return true;
+        }
+        if (self.long) |token| {
+            if (std.mem.eql(u8, value, token)) return true;
+        }
+        return false;
+    }
+};
+
+pub const ResolveOptions = struct {
+    help_tokens: HelpTokens = .{},
+};
+
 pub const Help = struct { root: *const Command, command: *const Command };
 pub const Selection = struct {
     root: *const Command,
@@ -14,6 +37,10 @@ pub const Unknown = struct { root: *const Command, parent: *const Command, value
 pub const Resolution = union(enum) { help: Help, execute: Selection, unknown: Unknown };
 
 pub fn resolve(root: *const Command, args: []const []const u8) Resolution {
+    return resolveWithOptions(root, args, .{});
+}
+
+pub fn resolveWithOptions(root: *const Command, args: []const []const u8, config: ResolveOptions) Resolution {
     if (args.len == 0) return .{ .help = .{ .root = root, .command = root } };
 
     var index: usize = 0;
@@ -23,7 +50,7 @@ pub fn resolve(root: *const Command, args: []const []const u8) Resolution {
     var current = root;
     while (index < args.len) {
         const value = args[index];
-        if (isHelp(value)) return .{ .help = .{ .root = root, .command = current } };
+        if (config.help_tokens.matches(value)) return .{ .help = .{ .root = root, .command = current } };
         const child = current.findChild(value) orelse break;
         current = child;
         index += 1;
@@ -74,7 +101,7 @@ fn skipLeadingGlobal(root: *const Command, args: []const []const u8, index: usiz
 }
 
 pub fn isHelp(value: []const u8) bool {
-    return std.mem.eql(u8, value, "help") or std.mem.eql(u8, value, "-h") or std.mem.eql(u8, value, "--help");
+    return (HelpTokens{}).matches(value);
 }
 
 fn ignore(_: *@import("context.zig").Context) !void {}
@@ -92,6 +119,30 @@ test "root global options can precede the command path" {
         .execute => |selected| {
             try std.testing.expectEqual(@as(usize, 1), selected.prefix_args.len);
             try std.testing.expectEqualStrings("target", selected.args[0]);
+        },
+        else => return error.UnexpectedResolution,
+    }
+}
+
+test "literal help can be owned by the application" {
+    const help_command: Command = .{
+        .name = "help",
+        .handler = ignore,
+        .args = .{ .exact = 1 },
+    };
+    const root: Command = .{ .name = "demo", .children = &.{&help_command} };
+    const args = [_][]const u8{ "help", "fsrs" };
+
+    const default_result = resolve(&root, &args);
+    try std.testing.expect(default_result == .help);
+
+    const result = resolveWithOptions(&root, &args, .{
+        .help_tokens = .{ .command = null },
+    });
+    switch (result) {
+        .execute => |selected| {
+            try std.testing.expect(selected.command == &help_command);
+            try std.testing.expectEqualStrings("fsrs", selected.args[0]);
         },
         else => return error.UnexpectedResolution,
     }

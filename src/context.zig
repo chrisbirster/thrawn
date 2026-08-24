@@ -11,6 +11,12 @@ pub const Context = struct {
     options: []const option.Value = &.{},
     stdout: *std.Io.Writer,
     stderr: *std.Io.Writer,
+    app_state: ?*anyopaque = null,
+
+    pub fn state(self: *const Context, comptime T: type) ?*T {
+        const raw = self.app_state orelse return null;
+        return @ptrCast(@alignCast(raw));
+    }
 
     pub fn argument(self: *const Context, index: usize) ?[]const u8 {
         if (index >= self.args.len) return null;
