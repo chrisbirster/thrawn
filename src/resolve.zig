@@ -8,9 +8,15 @@ pub const HelpTokens = struct {
     long: ?[]const u8 = "--help",
 
     pub fn matches(self: HelpTokens, value: []const u8) bool {
-        if (self.command) |token| if (std.mem.eql(u8, value, token)) return true;
-        if (self.short) |token| if (std.mem.eql(u8, value, token)) return true;
-        if (self.long) |token| if (std.mem.eql(u8, value, token)) return true;
+        if (self.command) |token| {
+            if (std.mem.eql(u8, value, token)) return true;
+        }
+        if (self.short) |token| {
+            if (std.mem.eql(u8, value, token)) return true;
+        }
+        if (self.long) |token| {
+            if (std.mem.eql(u8, value, token)) return true;
+        }
         return false;
     }
 };
@@ -95,7 +101,7 @@ fn skipLeadingGlobal(root: *const Command, args: []const []const u8, index: usiz
 }
 
 pub fn isHelp(value: []const u8) bool {
-    return HelpTokens{}.matches(value);
+    return (HelpTokens{}).matches(value);
 }
 
 fn ignore(_: *@import("context.zig").Context) !void {}
