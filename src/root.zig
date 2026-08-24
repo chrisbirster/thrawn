@@ -22,9 +22,15 @@ pub const CompletionContext = @import("command.zig").CompletionContext;
 pub const Completer = @import("command.zig").Completer;
 pub const Context = @import("context.zig").Context;
 pub const Resolution = @import("resolve.zig").Resolution;
+pub const ResolveOptions = @import("resolve.zig").ResolveOptions;
+pub const HelpTokens = @import("resolve.zig").HelpTokens;
 pub const resolve = @import("resolve.zig").resolve;
+pub const resolveWithOptions = @import("resolve.zig").resolveWithOptions;
+pub const RunOptions = @import("run.zig").RunOptions;
 pub const run = @import("run.zig").run;
+pub const runWithOptions = @import("run.zig").runWithOptions;
 pub const runArgs = @import("run.zig").runArgs;
+pub const runArgsWithOptions = @import("run.zig").runArgsWithOptions;
 
 test "package version is available through the public module" {
     try @import("std").testing.expect(version.len > 0);
