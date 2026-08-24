@@ -10,7 +10,16 @@ const suggestions = @import("suggestions.zig");
 const validation = @import("validation.zig");
 const exit = @import("errors.zig");
 
+pub const RunOptions = struct {
+    state: ?*anyopaque = null,
+    resolve: resolve_mod.ResolveOptions = .{},
+};
+
 pub fn run(init: std.process.Init, root: *const Command) !u8 {
+    return runWithOptions(init, root, .{});
+}
+
+pub fn runWithOptions(init: std.process.Init, root: *const Command, config: RunOptions) !u8 {
     const argv = try init.minimal.args.toSlice(init.arena.allocator());
     const args = if (argv.len > 1) argv[1..] else &.{};
 
@@ -27,12 +36,13 @@ pub fn run(init: std.process.Init, root: *const Command) !u8 {
         &stderr_buffer,
     );
 
-    const code = try runArgs(
+    const code = try runArgsWithOptions(
         init.arena.allocator(),
         root,
         args,
         &stdout_file_writer.interface,
         &stderr_file_writer.interface,
+        config,
     );
     try stdout_file_writer.interface.flush();
     try stderr_file_writer.interface.flush();
@@ -46,6 +56,17 @@ pub fn runArgs(
     stdout: *std.Io.Writer,
     stderr: *std.Io.Writer,
 ) !u8 {
+    return runArgsWithOptions(allocator, root, args, stdout, stderr, .{});
+}
+
+pub fn runArgsWithOptions(
+    allocator: std.mem.Allocator,
+    root: *const Command,
+    args: []const []const u8,
+    stdout: *std.Io.Writer,
+    stderr: *std.Io.Writer,
+    config: RunOptions,
+) !u8 {
     try validation.validate(root);
 
     if (args.len > 0 and std.mem.eql(u8, args[0], "--thrawn-complete")) {
@@ -53,7 +74,7 @@ pub fn runArgs(
         return exit.success;
     }
 
-    switch (resolve_mod.resolve(root, args)) {
+    switch (resolve_mod.resolveWithOptions(root, args, config.resolve)) {
         .help => |selected| {
             try help.write(stdout, selected.root, selected.command);
             return exit.success;
@@ -78,6 +99,7 @@ pub fn runArgs(
                 selected.args,
                 stdout,
                 stderr,
+                config.state,
             );
         },
     }
@@ -91,6 +113,7 @@ fn execute(
     tail_args: []const []const u8,
     stdout: *std.Io.Writer,
     stderr: *std.Io.Writer,
+    app_state: ?*anyopaque,
 ) !u8 {
     var command_stack: [path.max_depth]*const Command = undefined;
     const command_count = path.collect(root, command, &command_stack) orelse {
@@ -178,6 +201,7 @@ fn execute(
         .options = parsed.values,
         .stdout = stdout,
         .stderr = stderr,
+        .app_state = app_state,
     };
 
     for (command_path) |node| {
@@ -211,4 +235,32 @@ fn execute(
         return exit.failure;
     }
     return exit.success;
+}
+
+const TestState = struct { count: usize = 0 };
+
+fn incrementState(ctx: *Context) !void {
+    const state = ctx.state(TestState) orelse return error.MissingState;
+    state.count += 1;
+}
+
+test "application state reaches handlers" {
+    const leaf: Command = .{ .name = "go", .handler = incrementState, .args = .{ .exact = 0 } };
+    const root: Command = .{ .name = "demo", .children = &.{&leaf} };
+    var state: TestState = .{};
+    var stdout_buffer: [64]u8 = undefined;
+    var stderr_buffer: [64]u8 = undefined;
+    var stdout = std.Io.Writer.fixed(&stdout_buffer);
+    var stderr = std.Io.Writer.fixed(&stderr_buffer);
+
+    const code = try runArgsWithOptions(
+        std.testing.allocator,
+        &root,
+        &.{"go"},
+        &stdout,
+        &stderr,
+        .{ .state = &state },
+    );
+    try std.testing.expectEqual(exit.success, code);
+    try std.testing.expectEqual(@as(usize, 1), state.count);
 }

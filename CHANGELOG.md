@@ -6,6 +6,20 @@ The project follows Semantic Versioning.
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-23
+
+### Added
+
+- Typed application state injection through `RunOptions.state` and `Context.state(T)`.
+- `runWithOptions` and `runArgsWithOptions` while preserving the v0.1 `run` and `runArgs` defaults.
+- Configurable help tokens through `HelpTokens` and `ResolveOptions`.
+- `resolveWithOptions` so applications can own a literal `help` command while retaining `-h` and `--help` behavior.
+
+### Compatibility
+
+- Existing v0.1 call sites continue to use the original default behavior without changes.
+- Default help recognition remains `help`, `-h`, and `--help`.
+
 ## 0.1.0 - 2026-08-23
 
 ### Added
