@@ -48,6 +48,7 @@ pub fn build(b: *std.Build) void {
         "tests/hooks_test.zig",
         "tests/passthrough_test.zig",
         "tests/docs_test.zig",
+        "tests/v0_2_api_test.zig",
     }) |test_path| {
         const tests = addTest(b, thrawn, target, optimize, test_path);
         test_step.dependOn(&tests.step);
