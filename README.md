@@ -14,6 +14,8 @@ Thrawn is a composable command-tree framework for Zig 0.16. It provides the mech
 - option dependencies, conflicts, and mutually exclusive groups
 - inherited global options
 - grouped generated help with full nested command paths
+- configurable `help`, `-h`, and `--help` token handling
+- typed application state available to handlers and hooks through `Context.state(T)`
 - before/after hooks inherited through the command tree
 - passthrough commands for wrapping other executables
 - generated Markdown and man-page documentation
@@ -31,7 +33,7 @@ Thrawn is a composable command-tree framework for Zig 0.16. It provides the mech
 For a tagged release:
 
 ```sh
-zig fetch --save git+https://github.com/chrisbirster/thrawn#v0.1.0
+zig fetch --save git+https://github.com/chrisbirster/thrawn#v0.2.0
 ```
 
 Then expose the dependency module from your `build.zig` and import it normally:
@@ -41,6 +43,47 @@ const th = @import("thrawn");
 ```
 
 See [`docs/installation.md`](docs/installation.md) for the complete dependency setup.
+
+## Application state
+
+Pass application-owned state without globals:
+
+```zig
+const App = struct {
+    verbose: bool = false,
+};
+
+fn status(ctx: *th.Context) !void {
+    const app = ctx.state(App) orelse return error.MissingAppState;
+    if (app.verbose) try ctx.print("verbose status\n", .{});
+}
+
+var app: App = .{ .verbose = true };
+const code = try th.runWithOptions(init, &root_command, .{
+    .state = &app,
+});
+```
+
+The state pointer is application-owned and must remain valid for the duration of the run.
+
+## Application-owned `help` commands
+
+By default, Thrawn recognizes `help`, `-h`, and `--help`. Applications that want a real `help` command can disable only the literal command token while retaining the option forms:
+
+```zig
+const help_command: th.Command = .{
+    .name = "help",
+    .handler = showHelpTopic,
+};
+
+const code = try th.runWithOptions(init, &root_command, .{
+    .resolve = .{
+        .help_tokens = .{ .command = null },
+    },
+});
+```
+
+Now `app help topic` resolves to the declared command while `app --help` and `app command --help` still use Thrawn's generated help.
 
 ## Option model
 
